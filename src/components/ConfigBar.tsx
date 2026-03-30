@@ -138,6 +138,13 @@ export default function ConfigBar({
               </>
             ) : (
               <>
+                <input
+                  type="password"
+                  value={apiKeyInput}
+                  disabled
+                  className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-500 placeholder-zinc-600"
+                  placeholder="Linear API key"
+                />
                 <select
                   value={selectedTeamId}
                   onChange={(e) => setSelectedTeamId(e.target.value)}
