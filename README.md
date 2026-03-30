@@ -57,7 +57,7 @@ Houston uses the Claude API (Anthropic) via **tool use** at 3-4 points in the pi
 The app works partially without all API keys configured:
 - **Without `ANTHROPIC_API_KEY`:** Nothing works — Claude is required for all pipeline steps. UI shows a clear error.
 - **Without `GITHUB_TOKEN`:** Falls back to unauthenticated requests (60 req/h rate limit). UI shows a warning indicator.
-- **Without `LINEAR_API_KEY`:** Step 3 shows the card as a preview but cannot sync to Linear. Pipeline continues normally.
+- **Without `LINEAR_API_KEY` or `LINEAR_TEAM_ID`:** Step 3 shows the card as a preview but cannot sync to Linear. You can configure a Linear API key and select a team dynamically in the ConfigBar (see **Dynamic Linear Configuration** below). Pipeline continues normally.
 
 Integration failures at runtime:
 - **GitHub fails →** Pipeline continues with empty context. Steps 3 and 4 work with available information only.
@@ -81,9 +81,10 @@ Integration failures at runtime:
    ```
    ANTHROPIC_API_KEY=sk-ant-...
    GITHUB_TOKEN=ghp_...          # optional for public repos
-   LINEAR_API_KEY=lin_api_...
-   LINEAR_TEAM_ID=...
+   LINEAR_API_KEY=lin_api_...    # optional; can be configured dynamically in the ConfigBar
+   LINEAR_TEAM_ID=...            # optional; can be configured dynamically in the ConfigBar
    ```
+   > **Note:** If `LINEAR_API_KEY` or `LINEAR_TEAM_ID` are not set in `.env.local`, you can configure them dynamically in the ConfigBar at runtime (no restart needed).
 
 4. Run the development server:
    ```bash
@@ -97,6 +98,21 @@ Integration failures at runtime:
 ```bash
 npm test
 ```
+
+## Dynamic Linear Configuration
+
+If `LINEAR_API_KEY` and `LINEAR_TEAM_ID` are not set in `.env.local`, you can configure them dynamically at runtime without restarting the server:
+
+1. Click the **"Linear: not configured"** button in the ConfigBar (top bar).
+2. Paste your Linear API key in the input field.
+3. Click **"Fetch Teams"** — the system will connect to Linear and fetch your available teams.
+4. Select a team from the dropdown.
+5. Click **"Confirm"** — your configuration is saved in session state.
+6. Submit a message with type `bug` or `feature` to create a card on Linear. The card will be created in the selected team.
+
+To clear the configuration, click the **✕** button next to the Linear status indicator.
+
+**Note:** Configuration is stored in session state only; it is not persisted across page reloads. If you need persistent configuration, set `LINEAR_API_KEY` and `LINEAR_TEAM_ID` in `.env.local`.
 
 ## Trade-offs & Improvements
 
