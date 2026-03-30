@@ -18,8 +18,7 @@ const mockCreateIssue = vi.mocked(createIssue);
 
 describe("buildTriageMessage", () => {
   const emptyContext: ContextResult = {
-    github: { relevantPRs: [], relevantIssues: [], codeMatches: [] },
-    docs: [],
+    github: { relevantPRs: [], relevantIssues: [] },
   };
 
   it("includes classification info in the message", () => {
@@ -36,7 +35,7 @@ describe("buildTriageMessage", () => {
     expect(message).toContain("Export module");
   });
 
-  it("includes context when available", () => {
+  it("includes PR context when available", () => {
     const classification: ClassifyResult = {
       type: "bug",
       confidence: 0.9,
@@ -46,16 +45,12 @@ describe("buildTriageMessage", () => {
       github: {
         relevantPRs: [{ title: "Fix auth flow", url: "https://github.com/pr/1", body: "Updated login" }],
         relevantIssues: [],
-        codeMatches: [{ path: "src/auth.ts", snippet: "function login()" }],
       },
-      docs: [{ path: "docs/auth.md", content: "Auth documentation", relevance: 2 }],
     };
 
     const message = buildTriageMessage(classification, context);
 
     expect(message).toContain("Fix auth flow");
-    expect(message).toContain("src/auth.ts");
-    expect(message).toContain("Auth documentation");
   });
 
   it("handles empty context gracefully", () => {

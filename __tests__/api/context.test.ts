@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { curateItems, curateDocs } from "@/app/api/context/route";
+import { curateItems } from "@/app/api/context/route";
 
 describe("curateItems", () => {
   it("returns top N items ranked by keyword match", () => {
@@ -34,31 +34,5 @@ describe("curateItems", () => {
     const result = curateItems(items, ["login"], 5);
 
     expect(result).toHaveLength(1);
-  });
-});
-
-describe("curateDocs", () => {
-  it("returns top N docs ranked by keyword relevance", () => {
-    const docs = [
-      { path: "docs/api.md", content: "API reference for payments" },
-      { path: "docs/auth.md", content: "Authentication and login flow" },
-      { path: "docs/deploy.md", content: "Deployment guide" },
-    ];
-
-    const result = curateDocs(docs, ["login", "auth"], 2);
-
-    expect(result).toHaveLength(1);
-    expect(result[0].path).toBe("docs/auth.md");
-    expect(result[0].relevance).toBeGreaterThan(0);
-  });
-
-  it("returns empty array when no docs match", () => {
-    const docs = [
-      { path: "docs/deploy.md", content: "Deployment guide" },
-    ];
-
-    const result = curateDocs(docs, ["login"], 3);
-
-    expect(result).toHaveLength(0);
   });
 });

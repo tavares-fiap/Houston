@@ -24,20 +24,6 @@ export function buildTriageMessage(
           .join("\n")
       : "No relevant issues found.";
 
-  const codeSection =
-    context.github.codeMatches.length > 0
-      ? context.github.codeMatches
-          .map((c) => `- ${c.path}: ${c.snippet}`)
-          .join("\n")
-      : "No code matches found.";
-
-  const docSection =
-    context.docs.length > 0
-      ? context.docs
-          .map((d) => `- ${d.path}: ${d.content.slice(0, 300)}`)
-          .join("\n")
-      : "No documentation found.";
-
   const structureSection =
     context.projectStructure?.selectedFiles && context.projectStructure.selectedFiles.length > 0
       ? context.projectStructure.selectedFiles
@@ -56,6 +42,13 @@ export function buildTriageMessage(
     ? `\`\`\`json\n${context.projectStructure.dependencies}\n\`\`\``
     : "No package.json found.";
 
+  const recentPRsSection =
+    context.projectStructure?.recentPRs && context.projectStructure.recentPRs.length > 0
+      ? context.projectStructure.recentPRs
+          .map((pr) => `- #${pr.number}: ${pr.title} (${pr.url})${pr.mergedAt ? ` — merged ${pr.mergedAt}` : ""}`)
+          .join("\n")
+      : "No recent PRs available.";
+
   return `Classification: ${classification.type} (confidence: ${classification.confidence})
 Summary: ${classification.extracted.summary}
 ${classification.extracted.affectedArea ? `Affected Area: ${classification.extracted.affectedArea}` : ""}
@@ -68,17 +61,14 @@ ${prSection}
 ## Related Issues
 ${issueSection}
 
-## Code Matches
-${codeSection}
-
-## Documentation
-${docSection}
-
 ## Project Structure — Selected Files
 ${structureSection}
 
 ## Recent Commits
 ${commitsSection}
+
+## Recent PRs
+${recentPRsSection}
 
 ## Dependencies (package.json)
 ${dependenciesSection}`;

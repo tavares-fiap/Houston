@@ -3,16 +3,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("@/lib/github", () => ({
   searchPRs: vi.fn().mockResolvedValue([]),
   searchIssues: vi.fn().mockResolvedValue([]),
-  searchCode: vi.fn().mockResolvedValue([]),
   fetchRepoTree: vi.fn().mockResolvedValue([]),
   fetchRecentCommits: vi.fn().mockResolvedValue([]),
   fetchFilesBatch: vi.fn().mockResolvedValue([]),
   getFileContent: vi.fn().mockResolvedValue("{}"),
-  listDocs: vi.fn().mockResolvedValue([]),
-}));
-
-vi.mock("@/lib/rag", () => ({
-  searchDocs: vi.fn().mockResolvedValue([]),
+  fetchRecentPRs: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock("@/lib/anthropic", () => ({
@@ -125,7 +120,7 @@ describe("POST /api/context — projectStructure", () => {
     expect(body.projectStructure.dependencies).toBeNull();
   });
 
-  it("still returns github and docs fields alongside projectStructure", async () => {
+  it("still returns github field alongside projectStructure", async () => {
     mockFetchRepoTree.mockResolvedValueOnce([]);
     mockFetchRecentCommits.mockResolvedValueOnce([]);
     mockFetchFilesBatch.mockResolvedValueOnce([]);
@@ -135,6 +130,5 @@ describe("POST /api/context — projectStructure", () => {
     const body = await res.json();
 
     expect(body.github).toBeDefined();
-    expect(body.docs).toBeDefined();
   });
 });

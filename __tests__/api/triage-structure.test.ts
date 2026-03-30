@@ -13,8 +13,7 @@ const baseClassification: ClassifyResult = {
 };
 
 const emptyContext: ContextResult = {
-  github: { relevantPRs: [], relevantIssues: [], codeMatches: [] },
-  docs: [],
+  github: { relevantPRs: [], relevantIssues: [] },
 };
 
 describe("buildTriageMessage — projectStructure sections", () => {
@@ -29,7 +28,7 @@ describe("buildTriageMessage — projectStructure sections", () => {
   it("shows fallback text when projectStructure is present but selectedFiles is empty", () => {
     const context: ContextResult = {
       ...emptyContext,
-      projectStructure: { selectedFiles: [], recentCommits: [], dependencies: null },
+      projectStructure: { selectedFiles: [], recentCommits: [], dependencies: null, recentPRs: [] },
     };
 
     const message = buildTriageMessage(baseClassification, context);
@@ -46,6 +45,7 @@ describe("buildTriageMessage — projectStructure sections", () => {
         selectedFiles: [{ path: "src/auth.ts", content: "export function login() {}" }],
         recentCommits: [],
         dependencies: null,
+        recentPRs: [],
       },
     };
 
@@ -83,6 +83,7 @@ describe("buildTriageMessage — projectStructure sections", () => {
         selectedFiles: [],
         recentCommits: [],
         dependencies: '{"name":"app","version":"1.0.0"}',
+        recentPRs: [],
       },
     };
 

@@ -42,17 +42,6 @@ export interface IssueInfo {
   body: string;
 }
 
-export interface CodeMatch {
-  path: string;
-  snippet: string;
-}
-
-export interface DocMatch {
-  path: string;
-  content: string;
-  relevance: number;
-}
-
 export interface ProjectFile {
   path: string;
   content: string;
@@ -64,10 +53,19 @@ export interface RecentCommit {
   url: string;
 }
 
+export interface RecentPR {
+  number: number;
+  title: string;
+  url: string;
+  mergedAt: string | null;
+  body: string;
+}
+
 export interface ProjectStructure {
   selectedFiles: ProjectFile[];
   recentCommits: RecentCommit[];
   dependencies: string | null; // package.json content, null if absent
+  recentPRs: RecentPR[];
 }
 
 export interface ContextInput {
@@ -79,9 +77,7 @@ export interface ContextResult {
   github: {
     relevantPRs: PRInfo[];
     relevantIssues: IssueInfo[];
-    codeMatches: CodeMatch[];
   };
-  docs: DocMatch[];
   projectStructure?: ProjectStructure;
 }
 
