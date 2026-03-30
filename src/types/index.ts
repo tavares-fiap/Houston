@@ -10,6 +10,7 @@ export interface RepoInfo {
 export interface LinearConfig {
   apiKey: string;
   teamId: string;
+  teamName: string;
 }
 
 // --- Step 1: Classification ---

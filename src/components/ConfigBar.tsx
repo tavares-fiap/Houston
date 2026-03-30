@@ -65,7 +65,12 @@ export default function ConfigBar({
 
   function handleConfirmLinear() {
     if (!selectedTeamId || !apiKeyInput) return;
-    onLinearConfigChange?.({ apiKey: apiKeyInput, teamId: selectedTeamId });
+    const teamName = linearTeams.find((t) => t.id === selectedTeamId)?.name || "";
+    onLinearConfigChange?.({
+      apiKey: apiKeyInput,
+      teamId: selectedTeamId,
+      teamName,
+    });
     setEditingLinear(false);
     setLinearTeams([]);
     setApiKeyInput("");
@@ -182,7 +187,7 @@ export default function ConfigBar({
           >
             <span className="text-zinc-400">Linear:</span>
             <span className="text-blue-400">
-              {linearConfig ? linearConfig.teamId : "not configured"}
+              {linearConfig ? linearConfig.teamName : "not configured"}
             </span>
             <span className="text-zinc-600">▾</span>
           </button>
