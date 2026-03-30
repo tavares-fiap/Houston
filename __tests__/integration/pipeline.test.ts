@@ -7,9 +7,6 @@ vi.mock("@/lib/anthropic", () => ({
 vi.mock("@/lib/github", () => ({
   searchPRs: vi.fn(),
   searchIssues: vi.fn(),
-  searchCode: vi.fn(),
-  getFileContent: vi.fn(),
-  listDocs: vi.fn(),
 }));
 
 vi.mock("@/lib/linear", () => ({
@@ -17,18 +14,13 @@ vi.mock("@/lib/linear", () => ({
 }));
 
 import { callClaude } from "@/lib/anthropic";
-import * as github from "@/lib/github";
 import { createIssue } from "@/lib/linear";
 import { classifyMessage } from "@/app/api/classify/route";
-import { curateItems, curateDocs } from "@/app/api/context/route";
+import { curateItems } from "@/app/api/context/route";
 import { buildTriageMessage } from "@/app/api/triage/route";
 import type { ClassifyResult, ContextResult } from "@/types";
 
 const mockCallClaude = vi.mocked(callClaude);
-const mockSearchPRs = vi.mocked(github.searchPRs);
-const mockSearchIssues = vi.mocked(github.searchIssues);
-const mockSearchCode = vi.mocked(github.searchCode);
-const mockListDocs = vi.mocked(github.listDocs);
 const mockCreateIssue = vi.mocked(createIssue);
 
 describe("Pipeline routing", () => {
@@ -45,10 +37,7 @@ describe("Pipeline routing", () => {
 
     const { result } = await classifyMessage("What is the refund policy?");
 
-    // Question type means triage should be skipped
-    // (frontend handles this, but we verify the classification is correct)
     expect(result.type).toBe("question");
-    // createIssue should NOT be called for questions
     expect(mockCreateIssue).not.toHaveBeenCalled();
   });
 
@@ -56,10 +45,7 @@ describe("Pipeline routing", () => {
     const classification: ClassifyResult = {
       type: "bug",
       confidence: 0.95,
-      extracted: {
-        summary: "Save button broken",
-        affectedArea: "Profile page",
-      },
+      extracted: { summary: "Save button broken", affectedArea: "Profile page" },
     };
     mockCallClaude.mockResolvedValueOnce({
       result: classification,
@@ -69,17 +55,13 @@ describe("Pipeline routing", () => {
     const { result } = await classifyMessage("Save button is broken on profile");
 
     expect(result.type).toBe("bug");
-    // Bug type should proceed to triage (verified by type)
   });
 });
 
 describe("Resilience to empty context", () => {
-  it("curation returns valid empty structure when no results match", () => {
+  it("curation returns empty array when no results match", () => {
     const emptyPRs = curateItems([], ["login"], 3);
-    const emptyDocs = curateDocs([], ["login"], 3);
-
     expect(emptyPRs).toEqual([]);
-    expect(emptyDocs).toEqual([]);
   });
 
   it("triage message handles empty context without breaking", () => {
@@ -89,8 +71,7 @@ describe("Resilience to empty context", () => {
       extracted: { summary: "Something is broken" },
     };
     const emptyContext: ContextResult = {
-      github: { relevantPRs: [], relevantIssues: [], codeMatches: [] },
-      docs: [],
+      github: { relevantPRs: [], relevantIssues: [] },
     };
 
     const message = buildTriageMessage(classification, emptyContext);
@@ -98,8 +79,6 @@ describe("Resilience to empty context", () => {
     expect(message).toContain("Something is broken");
     expect(message).toContain("No relevant PRs found");
     expect(message).toContain("No relevant issues found");
-    expect(message).toContain("No code matches found");
-    expect(message).toContain("No documentation found");
   });
 
   it("curation handles items with zero keyword matches", () => {

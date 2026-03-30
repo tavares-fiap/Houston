@@ -47,8 +47,7 @@ function ContextResultView({ result }: { result: ContextResult }) {
       <div className="text-zinc-400">
         <span className="text-green-400">✓</span> {result.github.relevantPRs.length} PRs
         {" · "}{result.github.relevantIssues.length} Issues
-        {" · "}{result.github.codeMatches.length} Code matches
-        {" · "}{result.docs.length} Docs
+        {" · "}{result.github.relevantIssues.length} Commits
       </div>
       {result.github.relevantPRs.map((pr) => (
         <div key={pr.url} className="bg-zinc-800 rounded px-3 py-2">

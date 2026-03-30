@@ -27,8 +27,7 @@ const baseInput: RespondInput = {
     extracted: { summary: "Login broken", affectedArea: "auth" },
   },
   context: {
-    github: { relevantPRs: [], relevantIssues: [], codeMatches: [] },
-    docs: [],
+    github: { relevantPRs: [], relevantIssues: [] },
   },
 };
 
@@ -50,6 +49,7 @@ describe("POST /api/respond — projectStructure in message", () => {
           selectedFiles: [{ path: "src/auth.ts", content: "export function login() {}" }],
           recentCommits: [],
           dependencies: null,
+          recentPRs: [],
         },
       },
     };
@@ -73,6 +73,7 @@ describe("POST /api/respond — projectStructure in message", () => {
             { sha: "abc1234567", message: "Fix login", url: "https://github.com/c/abc" },
           ],
           dependencies: null,
+          recentPRs: [],
         },
       },
     };
@@ -94,6 +95,7 @@ describe("POST /api/respond — projectStructure in message", () => {
           selectedFiles: [],
           recentCommits: [],
           dependencies: '{"name":"app"}',
+          recentPRs: [],
         },
       },
     };
@@ -119,7 +121,7 @@ describe("POST /api/respond — projectStructure in message", () => {
       ...baseInput,
       context: {
         ...baseInput.context,
-        projectStructure: { selectedFiles: [], recentCommits: [], dependencies: null },
+        projectStructure: { selectedFiles: [], recentCommits: [], dependencies: null, recentPRs: [] },
       },
     };
 

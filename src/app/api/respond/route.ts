@@ -29,18 +29,6 @@ Summary: ${classification.extracted.summary}`;
       .join("\n");
   }
 
-  if (context.github.codeMatches.length > 0) {
-    message += `\n\n## Code Matches\n`;
-    message += context.github.codeMatches
-      .map((c) => `- ${c.path}: ${c.snippet}`)
-      .join("\n");
-  }
-
-  if (context.docs.length > 0) {
-    message += `\n\n## Documentation\n`;
-    message += context.docs.map((d) => `- ${d.path}`).join("\n");
-  }
-
   if (context.projectStructure?.selectedFiles && context.projectStructure.selectedFiles.length > 0) {
     message += `\n\n## Project Structure — Selected Files\n`;
     message += context.projectStructure.selectedFiles
@@ -57,6 +45,13 @@ Summary: ${classification.extracted.summary}`;
 
   if (context.projectStructure?.dependencies) {
     message += `\n\n## Dependencies (package.json)\n\`\`\`json\n${context.projectStructure.dependencies}\n\`\`\``;
+  }
+
+  if (context.projectStructure?.recentPRs && context.projectStructure.recentPRs.length > 0) {
+    message += `\n\n## Recent PRs\n`;
+    message += context.projectStructure.recentPRs
+      .map((pr) => `- #${pr.number}: ${pr.title}${pr.mergedAt ? ` (merged ${pr.mergedAt})` : ""}`)
+      .join("\n");
   }
 
   if (triage) {
