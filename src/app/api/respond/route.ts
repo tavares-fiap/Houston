@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { callClaude } from "@/lib/anthropic";
 import { RESPOND_SYSTEM_PROMPT, RESPOND_TOOL } from "@/lib/prompts";
+import { log, logError } from "@/lib/logger";
 import type { RespondInput, RespondResult } from "@/types";
 
 function buildRespondMessage(input: RespondInput): string {
@@ -54,6 +55,11 @@ export async function POST(request: NextRequest) {
   try {
     const body: RespondInput = await request.json();
 
+    log("respond", "input", {
+      classificationType: body.classification.type,
+      hasTriage: !!body.triage,
+    });
+
     const message = buildRespondMessage(body);
     const { result, usage } = await callClaude<RespondResult>({
       system: RESPOND_SYSTEM_PROMPT,
@@ -61,8 +67,14 @@ export async function POST(request: NextRequest) {
       tools: [RESPOND_TOOL],
     });
 
+    log("respond", "output", {
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens,
+    });
+
     return NextResponse.json({ ...result, usage });
   } catch (error) {
+    logError("respond", error);
     const msg = error instanceof Error ? error.message : "Response generation failed";
     return NextResponse.json({ error: msg }, { status: 500 });
   }

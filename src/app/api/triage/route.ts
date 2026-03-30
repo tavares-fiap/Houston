@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { callClaude } from "@/lib/anthropic";
 import { createIssue } from "@/lib/linear";
 import { TRIAGE_SYSTEM_PROMPT, TRIAGE_TOOL } from "@/lib/prompts";
+import { log, logError } from "@/lib/logger";
 import type { TriageInput, TriageResult, ClassifyResult, ContextResult } from "@/types";
 
 // Exported for testing
@@ -61,6 +62,8 @@ export async function POST(request: NextRequest) {
     const body: TriageInput = await request.json();
     const { classification, context } = body;
 
+    log("triage", "input", { classificationType: classification.type });
+
     // Generate card content via Claude
     const message = buildTriageMessage(classification, context);
     const { result: cardContent, usage } = await callClaude<{
@@ -89,6 +92,7 @@ export async function POST(request: NextRequest) {
         description: linearResult.description,
         labels: cardContent.labels,
       };
+      log("triage", "linear_card_created", { cardId: linearResult.id });
     } catch {
       // Graceful degradation: show card preview even if Linear is unavailable
       card = {
@@ -100,8 +104,15 @@ export async function POST(request: NextRequest) {
       };
     }
 
+    log("triage", "output", {
+      cardId: card.id || "(preview)",
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens,
+    });
+
     return NextResponse.json({ card, usage });
   } catch (error) {
+    logError("triage", error);
     const message = error instanceof Error ? error.message : "Triage failed";
     return NextResponse.json({ error: message }, { status: 500 });
   }

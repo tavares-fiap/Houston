@@ -3,6 +3,7 @@ import { searchPRs, searchIssues, searchCode } from "@/lib/github";
 import { searchDocs } from "@/lib/rag";
 import { callClaude } from "@/lib/anthropic";
 import { RANK_SYSTEM_PROMPT, RANK_TOOL } from "@/lib/prompts";
+import { log, logError } from "@/lib/logger";
 import type {
   ContextInput,
   ContextResult,
@@ -121,6 +122,12 @@ export async function POST(request: NextRequest) {
     const keywords = extractKeywords(classification);
     const query = keywords.slice(0, 5).join(" ");
 
+    log("context", "input", {
+      classificationType: classification.type,
+      repo: `${repo.owner}/${repo.name}`,
+      keywordCount: keywords.length,
+    });
+
     // Graceful degradation: continue pipeline even if external service fails
     const [rawPRs, rawIssues, rawCode, rawDocs] = await Promise.all([
       searchPRs(repo.owner, repo.name, query).catch(() => []),
@@ -192,9 +199,17 @@ export async function POST(request: NextRequest) {
       docs,
     };
 
+    log("context", "github_results", {
+      prs: relevantPRs.length,
+      issues: relevantIssues.length,
+      code: codeMatches.length,
+      docs: docs.length,
+    });
+
     // Include usage only if Haiku was called for ranking (undefined otherwise)
     return NextResponse.json({ ...result, ...(rankingUsage && { usage: rankingUsage }) });
   } catch (error) {
+    logError("context", error);
     const message = error instanceof Error ? error.message : "Context retrieval failed";
     return NextResponse.json({ error: message }, { status: 500 });
   }

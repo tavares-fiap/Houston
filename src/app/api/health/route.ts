@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { log } from "@/lib/logger";
 
 type Status = "ok" | "missing";
 
@@ -18,6 +19,8 @@ export async function GET() {
         ? "ok"
         : "missing",
   };
+
+  log("health", "output", { anthropic: health.anthropic, github: health.github, linear: health.linear });
 
   return NextResponse.json(health);
 }
