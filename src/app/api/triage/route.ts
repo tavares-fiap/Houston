@@ -24,19 +24,30 @@ export function buildTriageMessage(
           .join("\n")
       : "No relevant issues found.";
 
-  const codeSection =
-    context.github.codeMatches.length > 0
-      ? context.github.codeMatches
-          .map((c) => `- ${c.path}: ${c.snippet}`)
-          .join("\n")
-      : "No code matches found.";
+  const structureSection =
+    context.projectStructure?.selectedFiles && context.projectStructure.selectedFiles.length > 0
+      ? context.projectStructure.selectedFiles
+          .map((f) => `### ${f.path}\n\`\`\`\n${f.content}\n\`\`\``)
+          .join("\n\n")
+      : "No project structure available.";
 
-  const docSection =
-    context.docs.length > 0
-      ? context.docs
-          .map((d) => `- ${d.path}: ${d.content.slice(0, 300)}`)
+  const commitsSection =
+    context.projectStructure?.recentCommits && context.projectStructure.recentCommits.length > 0
+      ? context.projectStructure.recentCommits
+          .map((c) => `- ${c.sha.slice(0, 7)}: ${c.message} (${c.url})`)
           .join("\n")
-      : "No documentation found.";
+      : "No recent commits available.";
+
+  const dependenciesSection = context.projectStructure?.dependencies
+    ? `\`\`\`json\n${context.projectStructure.dependencies}\n\`\`\``
+    : "No package.json found.";
+
+  const recentPRsSection =
+    context.projectStructure?.recentPRs && context.projectStructure.recentPRs.length > 0
+      ? context.projectStructure.recentPRs
+          .map((pr) => `- #${pr.number}: ${pr.title} (${pr.url})${pr.mergedAt ? ` — merged ${pr.mergedAt}` : ""}`)
+          .join("\n")
+      : "No recent PRs available.";
 
   return `Classification: ${classification.type} (confidence: ${classification.confidence})
 Summary: ${classification.extracted.summary}
@@ -50,11 +61,17 @@ ${prSection}
 ## Related Issues
 ${issueSection}
 
-## Code Matches
-${codeSection}
+## Project Structure — Selected Files
+${structureSection}
 
-## Documentation
-${docSection}`;
+## Recent Commits
+${commitsSection}
+
+## Recent PRs
+${recentPRsSection}
+
+## Dependencies (package.json)
+${dependenciesSection}`;
 }
 
 export async function POST(request: NextRequest) {

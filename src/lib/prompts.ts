@@ -79,6 +79,33 @@ export const RANK_TOOL: Anthropic.Tool = {
   },
 };
 
+// --- Step 2: File Selection (structural context) ---
+
+export const SELECT_FILES_SYSTEM_PROMPT = `You are a code navigation assistant. Given a list of repository file paths and a problem description, select the files most likely to contain the relevant code.
+
+Rules:
+- Select at most 10 files
+- Prioritize files in modules related to the affected area
+- Include type/interface files if the problem involves typing issues
+- Include relevant configuration files if the problem is infrastructure-related
+- Return ONLY the paths from the provided list — do not invent paths`;
+
+export const SELECT_FILES_TOOL: Anthropic.Tool = {
+  name: "select_relevant_files",
+  description: "Select the most relevant file paths for the given problem",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      selectedPaths: {
+        type: "array",
+        items: { type: "string" },
+        description: "Selected file paths (max 10), ordered by relevance",
+      },
+    },
+    required: ["selectedPaths"],
+  },
+};
+
 // --- Step 3: Triage (Card Generation) ---
 
 export const TRIAGE_SYSTEM_PROMPT = `You are Houston, generating a card for a project management tool based on a client request.

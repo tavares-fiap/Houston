@@ -1,24 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { searchPRs, searchIssues, searchCode } from "@/lib/github";
-import { searchDocs } from "@/lib/rag";
+import { searchPRs, searchIssues, fetchRepoTree, fetchRecentCommits, fetchFilesBatch, getFileContent, fetchRecentPRs } from "@/lib/github";
 import { callClaude } from "@/lib/anthropic";
-import { RANK_SYSTEM_PROMPT, RANK_TOOL } from "@/lib/prompts";
+import { RANK_SYSTEM_PROMPT, RANK_TOOL, SELECT_FILES_SYSTEM_PROMPT, SELECT_FILES_TOOL } from "@/lib/prompts";
 import { log, logError } from "@/lib/logger";
 import type {
   ContextInput,
   ContextResult,
   PRInfo,
   IssueInfo,
-  CodeMatch,
-  DocMatch,
   TokenUsage,
+  ProjectStructure,
 } from "@/types";
-import type { RawDoc } from "@/lib/github";
 
 const TOP_N_PRS = 3;
 const TOP_N_ISSUES = 3;
-const TOP_N_CODE = 5;
-const TOP_N_DOCS = 3;
 // Broader heuristic pass before optional Haiku ranking
 const HEURISTIC_LIMIT = 10;
 
@@ -43,27 +38,6 @@ export function curateItems<T extends { title: string; body: string }>(
     .sort((a, b) => b.score - a.score)
     .slice(0, topN)
     .map(({ item }) => item);
-}
-
-export function curateDocs(
-  docs: RawDoc[],
-  keywords: string[],
-  topN: number
-): DocMatch[] {
-  const lowerKeywords = keywords.map((k) => k.toLowerCase());
-
-  return docs
-    .map((doc) => {
-      const text = `${doc.path} ${doc.content}`.toLowerCase();
-      const score = lowerKeywords.reduce(
-        (s, kw) => s + (text.includes(kw) ? 1 : 0),
-        0
-      );
-      return { path: doc.path, content: doc.content, relevance: score };
-    })
-    .filter((d) => d.relevance > 0)
-    .sort((a, b) => b.relevance - a.relevance)
-    .slice(0, topN);
 }
 
 function extractKeywords(classification: ContextInput["classification"]): string[] {
@@ -115,6 +89,36 @@ function accumulateUsage(acc: TokenUsage | undefined, next: TokenUsage): TokenUs
   };
 }
 
+// Blacklist approach: exclude only clear noise, let Haiku handle the rest.
+// This avoids language bias — repos in Go, Python, Ruby, etc. are not filtered out.
+const EXCLUDE_SEGMENTS = ["node_modules/", ".next/", "dist/", "build/", "coverage/", ".git/", "vendor/"];
+const EXCLUDE_EXTENSIONS = new Set([
+  ".jpg", ".jpeg", ".png", ".gif", ".svg", ".ico",
+  ".mp4", ".mp3", ".wav",
+  ".pdf", ".zip", ".tar", ".gz",
+  ".lock", ".map",
+]);
+// Paths containing these segments are surfaced first (language-agnostic signal of importance)
+const PRIORITY_SEGMENTS = ["src/", "app/", "lib/", "components/", "services/", "packages/", "docs/"];
+const MAX_PATHS = 1000;
+
+// Exported for testing
+export function filterRepoPaths(paths: string[]): string[] {
+  const filtered = paths.filter((p) => {
+    const ext = p.slice(p.lastIndexOf("."));
+    if (EXCLUDE_EXTENSIONS.has(ext)) return false;
+    if (EXCLUDE_SEGMENTS.some((seg) => p.includes(seg))) return false;
+    return true;
+  });
+
+  // Prioritize paths in important directories so Haiku sees the most relevant first
+  const priority = filtered.filter((p) => PRIORITY_SEGMENTS.some((seg) => p.includes(seg)));
+  const rest = filtered.filter((p) => !PRIORITY_SEGMENTS.some((seg) => p.includes(seg)));
+  const ordered = [...priority, ...rest];
+
+  return ordered.slice(0, MAX_PATHS);
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body: ContextInput = await request.json();
@@ -129,11 +133,10 @@ export async function POST(request: NextRequest) {
     });
 
     // Graceful degradation: continue pipeline even if external service fails
-    const [rawPRs, rawIssues, rawCode, rawDocs] = await Promise.all([
+    const [rawPRs, rawIssues, rawTree] = await Promise.all([
       searchPRs(repo.owner, repo.name, query).catch(() => []),
       searchIssues(repo.owner, repo.name, query).catch(() => []),
-      searchCode(repo.owner, repo.name, query).catch(() => []),
-      searchDocs(repo.owner, repo.name).catch(() => []),
+      fetchRepoTree(repo.owner, repo.name).catch(() => null),
     ]);
 
     // Step 1: Heuristic curation (keyword-based). Uses HEURISTIC_LIMIT to retain
@@ -148,7 +151,6 @@ export async function POST(request: NextRequest) {
       keywords,
       HEURISTIC_LIMIT
     );
-    const heuristicDocs = curateDocs(rawDocs, keywords, HEURISTIC_LIMIT);
 
     // Step 2: Optional Haiku ranking — only called when a category exceeds TOP_N.
     // Sends titles/summaries only (not full content) to keep token cost minimal.
@@ -156,7 +158,6 @@ export async function POST(request: NextRequest) {
     let rankingUsage: TokenUsage | undefined;
     let relevantPRs: PRInfo[];
     let relevantIssues: IssueInfo[];
-    let docs: DocMatch[];
 
     if (heuristicPRs.length > TOP_N_PRS) {
       const { rankedIndices, usage } = await rankWithHaiku(
@@ -180,30 +181,70 @@ export async function POST(request: NextRequest) {
       relevantIssues = heuristicIssues;
     }
 
-    if (heuristicDocs.length > TOP_N_DOCS) {
-      const { rankedIndices, usage } = await rankWithHaiku(
-        heuristicDocs.map((d) => d.path),
-        query
-      );
-      docs = rankedIndices.slice(0, TOP_N_DOCS).map((i) => heuristicDocs[i]).filter(Boolean);
-      rankingUsage = accumulateUsage(rankingUsage, usage);
-    } else {
-      docs = heuristicDocs;
+    // --- Project Structure (structural context independent of keyword matching) ---
+    let projectStructure: ProjectStructure | undefined;
+    if (rawTree !== null) {
+      try {
+        const filteredPaths = filterRepoPaths(rawTree);
+        log("context", "tree_filter", { totalPaths: rawTree.length, filteredPaths: filteredPaths.length });
+
+        // Build classification summary for Haiku
+        const { extracted } = classification;
+        const selectionMessage = [
+          `Problem type: ${classification.type}`,
+          `Summary: ${extracted.summary}`,
+          extracted.affectedArea ? `Affected area: ${extracted.affectedArea}` : null,
+          extracted.coreQuestion ? `Core question: ${extracted.coreQuestion}` : null,
+          extracted.featureDescription ? `Feature: ${extracted.featureDescription}` : null,
+          `\nRepository files:\n${filteredPaths.join("\n")}`,
+        ]
+          .filter(Boolean)
+          .join("\n");
+
+        const { result: selectionResult, usage: selectionUsage } = await callClaude<{
+          selectedPaths: string[];
+        }>({
+          system: SELECT_FILES_SYSTEM_PROMPT,
+          message: selectionMessage,
+          tools: [SELECT_FILES_TOOL],
+          model: "claude-haiku-4-5-20251001",
+        });
+        rankingUsage = accumulateUsage(rankingUsage, selectionUsage);
+        log("context", "file_selection", { selectedPathsCount: selectionResult.selectedPaths.length });
+
+        // Fetch selected files, recent commits, package.json, and recent PRs in parallel
+        const [selectedFiles, recentCommits, packageJsonContent, recentPRs] = await Promise.all([
+          fetchFilesBatch(repo.owner, repo.name, selectionResult.selectedPaths, 200),
+          fetchRecentCommits(repo.owner, repo.name, 10),
+          getFileContent(repo.owner, repo.name, "package.json").catch(() => null),
+          fetchRecentPRs(repo.owner, repo.name, 10).catch(() => []),
+        ]);
+
+        log("context", "files_fetched", { selectedFilesFetched: selectedFiles.length });
+
+        projectStructure = {
+          selectedFiles,
+          recentCommits,
+          dependencies: packageJsonContent,
+          recentPRs,
+        };
+      } catch {
+        // Graceful degradation: projectStructure stays undefined if any step fails
+        projectStructure = undefined;
+      }
     }
 
-    // searchCode already fetches real snippets and limits to MAX_CODE_FILES
-    const codeMatches: CodeMatch[] = rawCode.slice(0, TOP_N_CODE);
-
     const result: ContextResult = {
-      github: { relevantPRs, relevantIssues, codeMatches },
-      docs,
+      github: { relevantPRs, relevantIssues },
+      projectStructure,
     };
 
     log("context", "github_results", {
       prs: relevantPRs.length,
       issues: relevantIssues.length,
-      code: codeMatches.length,
-      docs: docs.length,
+      selectedFiles: projectStructure?.selectedFiles.length ?? 0,
+      recentCommits: projectStructure?.recentCommits.length ?? 0,
+      recentPRs: projectStructure?.recentPRs.length ?? 0,
     });
 
     // Include usage only if Haiku was called for ranking (undefined otherwise)
