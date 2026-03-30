@@ -45,9 +45,10 @@ function ContextResultView({ result }: { result: ContextResult }) {
   return (
     <div className="space-y-2 text-sm">
       <div className="text-zinc-400">
-        <span className="text-green-400">✓</span> {result.github.relevantPRs.length} PRs
+        <span className="text-green-400">✓</span> {result.github.relevantPRs.length + (result.projectStructure?.recentPRs?.length ?? 0)} PRs
         {" · "}{result.github.relevantIssues.length} Issues
-        {" · "}{result.github.relevantIssues.length} Commits
+        {" · "}{result.projectStructure?.recentCommits.length} Commits
+        {" · "}{result.projectStructure?.selectedFiles.length} Files
       </div>
       {result.github.relevantPRs.map((pr) => (
         <div key={pr.url} className="bg-zinc-800 rounded px-3 py-2">
