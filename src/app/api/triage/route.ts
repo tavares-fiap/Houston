@@ -77,7 +77,7 @@ ${dependenciesSection}`;
 export async function POST(request: NextRequest) {
   try {
     const body: TriageInput = await request.json();
-    const { classification, context } = body;
+    const { classification, context, linearApiKey, linearTeamId } = body;
 
     log("triage", "input", { classificationType: classification.type });
 
@@ -96,8 +96,12 @@ export async function POST(request: NextRequest) {
     // Create card on Linear
     let card: TriageResult["card"];
     try {
+      const teamId = linearTeamId || process.env.LINEAR_TEAM_ID!;
+      const apiKey = linearApiKey || undefined;
+
       const linearResult = await createIssue({
-        teamId: process.env.LINEAR_TEAM_ID!,
+        apiKey,
+        teamId,
         title: cardContent.title,
         description: cardContent.description,
         labels: cardContent.labels,

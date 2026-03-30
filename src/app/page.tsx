@@ -7,6 +7,7 @@ import InputPanel from "@/components/InputPanel";
 import ProcessingPanel from "@/components/ProcessingPanel";
 import type {
   RepoInfo,
+  LinearConfig,
   PipelineState,
   ClassifyResult,
   ContextResult,
@@ -58,10 +59,17 @@ export default function Home() {
   const [integrations, setIntegrations] = useState<IntegrationStatus>({
     anthropic: "missing", github: "missing", linear: "missing",
   });
+  const [linearConfig, setLinearConfig] = useState<LinearConfig | null>(null);
 
   useEffect(() => {
     fetch("/api/health").then((r) => r.json()).then(setIntegrations).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (linearConfig) {
+      setIntegrations((prev) => ({ ...prev, linear: "ok" }));
+    }
+  }, [linearConfig]);
 
   const updateStep = useCallback(
     <K extends keyof PipelineState>(key: K) =>
@@ -95,7 +103,12 @@ export default function Home() {
       if (classification.type === "bug" || classification.type === "feature") {
         triage = await runStep<TriageResult>(
           "/api/triage",
-          { classification, context },
+          {
+            classification,
+            context,
+            linearApiKey: linearConfig?.apiKey,
+            linearTeamId: linearConfig?.teamId,
+          },
           updateStep("triage")
         );
       } else {
@@ -120,7 +133,13 @@ export default function Home() {
 
   return (
     <div className="h-screen flex flex-col">
-      <ConfigBar repo={repo} onRepoChange={setRepo} integrations={integrations} />
+      <ConfigBar
+        repo={repo}
+        onRepoChange={setRepo}
+        integrations={integrations}
+        linearConfig={linearConfig}
+        onLinearConfigChange={setLinearConfig}
+      />
       <div className="flex flex-1 overflow-hidden">
         <div className="w-[38%] border-r border-zinc-800">
           <InputPanel onSubmit={handleSubmit} isProcessing={isProcessing} />

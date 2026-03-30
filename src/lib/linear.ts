@@ -5,12 +5,15 @@ function getClient(): LinearClient {
 }
 
 export async function createIssue(params: {
+  apiKey?: string;
   teamId: string;
   title: string;
   description: string;
   labels: string[];
 }): Promise<{ id: string; url: string; title: string; description: string }> {
-  const client = getClient();
+  const client = params.apiKey
+    ? new LinearClient({ apiKey: params.apiKey })
+    : getClient();
 
   // Find existing labels by name
   const allLabels = await client.issueLabels();

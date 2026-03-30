@@ -5,6 +5,14 @@ export interface RepoInfo {
   name: string;
 }
 
+// --- Linear Config ---
+
+export interface LinearConfig {
+  apiKey: string;
+  teamId: string;
+  teamName: string;
+}
+
 // --- Step 1: Classification ---
 
 export type MessageType = "bug" | "question" | "feature" | "ambiguous";
@@ -86,6 +94,8 @@ export interface ContextResult {
 export interface TriageInput {
   classification: ClassifyResult;
   context: ContextResult;
+  linearApiKey?: string;
+  linearTeamId?: string;
 }
 
 export interface CardInfo {
