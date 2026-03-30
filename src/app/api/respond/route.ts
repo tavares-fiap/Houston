@@ -41,6 +41,24 @@ Summary: ${classification.extracted.summary}`;
     message += context.docs.map((d) => `- ${d.path}`).join("\n");
   }
 
+  if (context.projectStructure?.selectedFiles && context.projectStructure.selectedFiles.length > 0) {
+    message += `\n\n## Project Structure — Selected Files\n`;
+    message += context.projectStructure.selectedFiles
+      .map((f) => `### ${f.path}\n\`\`\`\n${f.content}\n\`\`\``)
+      .join("\n\n");
+  }
+
+  if (context.projectStructure?.recentCommits && context.projectStructure.recentCommits.length > 0) {
+    message += `\n\n## Recent Commits\n`;
+    message += context.projectStructure.recentCommits
+      .map((c) => `- ${c.sha.slice(0, 7)}: ${c.message}`)
+      .join("\n");
+  }
+
+  if (context.projectStructure?.dependencies) {
+    message += `\n\n## Dependencies (package.json)\n\`\`\`json\n${context.projectStructure.dependencies}\n\`\`\``;
+  }
+
   if (triage) {
     message += `\n\n## Created Card\n`;
     message += `- Title: ${triage.card.title}\n`;

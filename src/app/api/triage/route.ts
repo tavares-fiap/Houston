@@ -38,6 +38,24 @@ export function buildTriageMessage(
           .join("\n")
       : "No documentation found.";
 
+  const structureSection =
+    context.projectStructure?.selectedFiles && context.projectStructure.selectedFiles.length > 0
+      ? context.projectStructure.selectedFiles
+          .map((f) => `### ${f.path}\n\`\`\`\n${f.content}\n\`\`\``)
+          .join("\n\n")
+      : "No project structure available.";
+
+  const commitsSection =
+    context.projectStructure?.recentCommits && context.projectStructure.recentCommits.length > 0
+      ? context.projectStructure.recentCommits
+          .map((c) => `- ${c.sha.slice(0, 7)}: ${c.message} (${c.url})`)
+          .join("\n")
+      : "No recent commits available.";
+
+  const dependenciesSection = context.projectStructure?.dependencies
+    ? `\`\`\`json\n${context.projectStructure.dependencies}\n\`\`\``
+    : "No package.json found.";
+
   return `Classification: ${classification.type} (confidence: ${classification.confidence})
 Summary: ${classification.extracted.summary}
 ${classification.extracted.affectedArea ? `Affected Area: ${classification.extracted.affectedArea}` : ""}
@@ -54,7 +72,16 @@ ${issueSection}
 ${codeSection}
 
 ## Documentation
-${docSection}`;
+${docSection}
+
+## Project Structure — Selected Files
+${structureSection}
+
+## Recent Commits
+${commitsSection}
+
+## Dependencies (package.json)
+${dependenciesSection}`;
 }
 
 export async function POST(request: NextRequest) {

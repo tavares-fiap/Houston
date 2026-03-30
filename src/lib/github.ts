@@ -1,4 +1,5 @@
 import { Octokit } from "octokit";
+import type { ProjectFile, RecentCommit } from "@/types";
 
 const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
 
@@ -155,4 +156,51 @@ export async function listDocs(
   } catch {
     return [];
   }
+}
+
+// Returns all file paths from the repository tree
+export async function fetchRepoTree(owner: string, repo: string): Promise<string[]> {
+  const response = await octokit.request("GET /repos/{owner}/{repo}/git/trees/HEAD", {
+    owner,
+    repo,
+    recursive: "1",
+    headers: { "X-GitHub-Api-Version": "2022-11-28" },
+  });
+  return (response.data.tree as Array<{ type: string; path: string }>)
+    .filter((item) => item.type === "blob")
+    .map((item) => item.path);
+}
+
+// Returns the N most recent commits
+export async function fetchRecentCommits(owner: string, repo: string, count: number): Promise<RecentCommit[]> {
+  const response = await octokit.request("GET /repos/{owner}/{repo}/commits", {
+    owner,
+    repo,
+    per_page: count,
+    headers: { "X-GitHub-Api-Version": "2022-11-28" },
+  });
+  return (response.data as Array<{ sha: string; commit: { message: string }; html_url: string }>).map((c) => ({
+    sha: c.sha,
+    message: c.commit.message.split("\n")[0],
+    url: c.html_url,
+  }));
+}
+
+// Reads multiple files in parallel, ignoring individual errors. Truncates to maxLines.
+export async function fetchFilesBatch(
+  owner: string,
+  repo: string,
+  paths: string[],
+  maxLines = 80
+): Promise<ProjectFile[]> {
+  const results = await Promise.allSettled(
+    paths.map(async (path) => {
+      const content = await getFileContent(owner, repo, path);
+      const lines = content.split("\n").slice(0, maxLines).join("\n");
+      return { path, content: lines } as ProjectFile;
+    })
+  );
+  return results
+    .filter((r): r is PromiseFulfilledResult<ProjectFile> => r.status === "fulfilled")
+    .map((r) => r.value);
 }

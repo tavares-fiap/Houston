@@ -53,6 +53,23 @@ export interface DocMatch {
   relevance: number;
 }
 
+export interface ProjectFile {
+  path: string;
+  content: string;
+}
+
+export interface RecentCommit {
+  sha: string;
+  message: string;
+  url: string;
+}
+
+export interface ProjectStructure {
+  selectedFiles: ProjectFile[];
+  recentCommits: RecentCommit[];
+  dependencies: string | null; // package.json content, null if absent
+}
+
 export interface ContextInput {
   classification: ClassifyResult;
   repo: RepoInfo;
@@ -65,6 +82,7 @@ export interface ContextResult {
     codeMatches: CodeMatch[];
   };
   docs: DocMatch[];
+  projectStructure?: ProjectStructure;
 }
 
 // --- Step 3: Triage ---
