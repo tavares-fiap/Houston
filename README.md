@@ -106,5 +106,5 @@ With more time, I would:
 - **SSE streaming:** Use Server-Sent Events to stream each step's progress instead of sequential HTTP calls.
 - **Persistence:** Add a database to store processed messages and enable a history view.
 - **Authentication:** Add auth to protect API keys and enable per-user configuration.
-- **Multi-channel:** Extend beyond the simulator to support Discord (as described in the original product document).
+- **Multi-channel:** Extend beyond the simulator to support Discord, Slack, Teams.
 - **Configurable prompts:** Allow users to customize system prompts and classification criteria.
