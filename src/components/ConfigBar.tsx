@@ -181,16 +181,32 @@ export default function ConfigBar({
             )}
           </div>
         ) : (
-          <button
-            onClick={() => setEditingLinear(true)}
-            className="flex items-center gap-1.5 bg-zinc-900 border border-zinc-700 rounded px-3 py-1 text-xs hover:border-zinc-500"
-          >
-            <span className="text-zinc-400">Linear:</span>
-            <span className="text-blue-400">
-              {linearConfig ? linearConfig.teamName : "not configured"}
-            </span>
-            <span className="text-zinc-600">▾</span>
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => linearConfig ? undefined : setEditingLinear(true)}
+              disabled={!!linearConfig}
+              className={`flex items-center gap-1.5 border rounded px-3 py-1 text-xs ${
+                linearConfig
+                  ? "bg-zinc-900 border-zinc-700 text-zinc-500 cursor-not-allowed"
+                  : "bg-zinc-900 border-zinc-700 hover:border-zinc-500"
+              }`}
+            >
+              <span className="text-zinc-400">Linear:</span>
+              <span className={linearConfig ? "text-zinc-500" : "text-blue-400"}>
+                {linearConfig ? linearConfig.teamName : "not configured"}
+              </span>
+              <span className="text-zinc-600">▾</span>
+            </button>
+            {linearConfig && (
+              <button
+                onClick={handleClearLinear}
+                className="text-xs text-zinc-500 hover:text-red-400"
+                title="Clear Linear configuration"
+              >
+                ✕
+              </button>
+            )}
+          </div>
         )}
       </div>
 
@@ -205,17 +221,6 @@ export default function ConfigBar({
           );
         })}
       </div>
-
-      {/* Clear Linear config button (right side, after indicators) */}
-      {linearConfig && (
-        <button
-          onClick={handleClearLinear}
-          className="text-xs text-zinc-500 hover:text-zinc-400 ml-2"
-          title="Clear Linear configuration"
-        >
-          ✕
-        </button>
-      )}
     </div>
   );
 }
