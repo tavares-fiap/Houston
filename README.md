@@ -125,7 +125,7 @@ The health status dots in the top bar (Anthropic · GitHub · Linear) reflect th
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/<your-user>/houston.git
+   git clone https://github.com/tavares-fiap/houston.git
    cd houston
    ```
 
